@@ -12,8 +12,14 @@ import java.util.ArrayList;
 
 public class VeinminerServer extends Veinminer implements ServerMod {
     static final int MAX_VEINMINE_ITERATIONS = 10;
-    private static double getMagnitudeBetween(int x1, int y1, int x2, int y2) {
-        return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+    public static int[] veinmineWhitelist;
+
+    // Utility methods
+    public static void addToWhitelist(int blockId) {
+        //todo
+    }
+    private static int getMagnitudeBetween(int x1, int x2) {
+        return Math.abs(x1 - x2);
     }
 
     private static boolean areCoordinatesDuplicate(ArrayList<ArrayList<Integer>> allCoords, ArrayList<Integer> coords) {
@@ -23,20 +29,40 @@ public class VeinminerServer extends Veinminer implements ServerMod {
                 return true;
             }
         }
+
         return false;
     }
 
-    private static void checkForBlock(ArrayList<ArrayList<Integer>> allCoords, World world, int targetBlockId, int x, int y, int z, int startX, int startY, int startZ, Integer totalIterations) {
+    private static boolean isLogNatural(World world, int x, int y, int z) {
+        return (world.getBlockMetadata(x, y, z) & 0x3) <= 2;
+    }
+
+    private static int getTotalLogHeight(World world, int x, int startY, int z) {
+        int height = 0;
+
+        // Check above
+        for (int y = startY; y < startY + 100; y++) {
+            if (!(Block.blocksList[world.getBlockId(x, y, z)] instanceof BlockLog)) {
+                break;
+            }
+
+            if (isLogNatural(world, x, y, z)) {
+                height++;
+            }
+        }
+
+        return height;
+    }
+
+    private static void doNormalVeinSearch(ArrayList<ArrayList<Integer>> allCoords, World world, int targetBlockId, int x, int y, int z, Integer totalIterations) {
         int blockId = world.getBlockId(x, y, z);
         if (blockId == targetBlockId) {
             if (totalIterations >= MAX_VEINMINE_ITERATIONS) {
                 return;
             }
 
-            if (Block.blocksList[blockId] instanceof BlockLog) {
-                if ((world.getBlockMetadata(x, y, z) & 0x3) > 2) {
-                    return; // Not a natural log
-                }
+            if (Block.blocksList[blockId] instanceof BlockLog && !isLogNatural(world, x, y, z)) {
+                return;
             }
 
 
@@ -53,50 +79,80 @@ public class VeinminerServer extends Veinminer implements ServerMod {
 
             // Check left, right, below, above, front, and back
             // I LOVE RECURSION!!!!!!!!!!!!!!!!!
-            checkForBlock(allCoords, world, targetBlockId,x - 1, y, z, startX, startY, startZ, totalIterations);
-            checkForBlock(allCoords, world, targetBlockId,x + 1, y, z, startX, startY, startZ, totalIterations);
-            checkForBlock(allCoords, world, targetBlockId, x,y - 1, z, startX, startY, startZ, totalIterations);
-            checkForBlock(allCoords, world, targetBlockId, x,y + 1, z, startX, startY, startZ, totalIterations);
-            checkForBlock(allCoords, world, targetBlockId, x, y, z - 1, startX, startY, startZ, totalIterations);
-            checkForBlock(allCoords, world, targetBlockId, x, y, z + 1, startX, startY, startZ, totalIterations);
-        }
-        else if (Block.blocksList[blockId] instanceof BlockLeavesBase) {
-
-            // So we don't veinmine a whole damn forest.
-            if (getMagnitudeBetween(startX, startZ, x, z) >= 4) {
-                return;
-            }
-
-            ArrayList<Integer> coords = new ArrayList<>();
-            coords.add(x);
-            coords.add(y);
-            coords.add(z);
-            if (areCoordinatesDuplicate(allCoords, coords)) {
-                return;
-            }
-
-            allCoords.add(coords);
-
-            // This makes leaves act like a sort of conductor for veinmining logs without actually breaking the leaves.
-            checkForBlock(allCoords, world, targetBlockId,x - 1, y, z, startX, startY, startZ, totalIterations);
-            checkForBlock(allCoords, world, targetBlockId,x + 1, y, z, startX, startY, startZ, totalIterations);
-            checkForBlock(allCoords, world, targetBlockId, x,y - 1, z, startX, startY, startZ, totalIterations);
-            checkForBlock(allCoords, world, targetBlockId, x,y + 1, z, startX, startY, startZ, totalIterations);
-            checkForBlock(allCoords, world, targetBlockId, x, y, z - 1, startX, startY, startZ, totalIterations);
-            checkForBlock(allCoords, world, targetBlockId, x, y, z + 1, startX, startY, startZ, totalIterations);
+            doNormalVeinSearch(allCoords, world, targetBlockId,x - 1, y, z, totalIterations);
+            doNormalVeinSearch(allCoords, world, targetBlockId,x + 1, y, z, totalIterations);
+            doNormalVeinSearch(allCoords, world, targetBlockId, x,y - 1, z, totalIterations);
+            doNormalVeinSearch(allCoords, world, targetBlockId, x,y + 1, z, totalIterations);
+            doNormalVeinSearch(allCoords, world, targetBlockId, x, y, z - 1, totalIterations);
+            doNormalVeinSearch(allCoords, world, targetBlockId, x, y, z + 1, totalIterations);
         }
     }
 
-    static ArrayList<ArrayList<Integer>> getAdjacentBlockCoords(World world, int targetBlockId, int startX, int startY, int startZ) {
+    // I LOVE NESTED LOOPS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    private static void doTreeVeinSearch(ArrayList<ArrayList<Integer>> allCoords, World world, int startX, int startY, int startZ) {
+        int treeHeight = getTotalLogHeight(world, startX, startY, startZ);
+        for (int y = startY; y <= startY + treeHeight; y++) {
+            for (int x = startX - 5; x <= startX + 5; x++) {
+                for (int z = startZ - 5; z <= startZ + 5; z++) {
+                    int blockAtPos = world.getBlockId(x, y, z);
+                    if (!(Block.blocksList[blockAtPos] instanceof BlockLog) | !isLogNatural(world, x, y, z)) {
+                        continue;
+                    }
+
+                    // The big trees may spawn a multi-block tall branch that is within 1 block of the base log.
+                    // That's what this check is for.
+                    if (getTotalLogHeight(world, x, y, z) > 1) {
+                        int distX = getMagnitudeBetween(startX, x);
+                        int distZ = getMagnitudeBetween(startZ, z);
+
+                        if (distX > 1 && distZ > 1) {
+                            continue;
+                        }
+                    }
+
+                    ArrayList<Integer> coords = new ArrayList<>();
+                    coords.add(x);
+                    coords.add(y);
+                    coords.add(z);
+                    if (areCoordinatesDuplicate(allCoords, coords)) {
+                        continue;
+                    }
+
+                    allCoords.add(coords);
+                }
+            }
+        }
+    }
+
+    static ArrayList<ArrayList<Integer>> getVein(World world, int targetBlockId, int startX, int startY, int startZ) {
         ArrayList<ArrayList<Integer>> allCoords = new ArrayList<>();
-        checkForBlock(allCoords, world, targetBlockId, startX, startY, startZ, startX, startY, startZ, 0);
+
+        if (Block.blocksList[targetBlockId] instanceof BlockLog && isLogNatural(world, startX, startY, startZ)) {
+            doTreeVeinSearch(allCoords, world, startX, startY, startZ);
+        }
+        else {
+            doNormalVeinSearch(allCoords, world, targetBlockId, startX, startY, startZ, 0);
+        }
+
         return allCoords;
     }
 
-    static boolean isItemTool(Item tool) {
-        return (tool instanceof ItemToolPickaxe) || (tool instanceof ItemToolSpade) || (tool instanceof ItemToolAxe);
-    }
+    static boolean isBlockWhitelisted(World world, int blockId) {
+        /*
+        int[] whitelist = ((WorldInfoAccessorClient) world.worldInfo).getVeinmineWhitelist();
+        if (whitelist == null) {
+            return false;
+        }
 
+        for (int whitelistedBlockId : whitelist) {
+            if (whitelistedBlockId == blockId) {
+                return true;
+            }
+        }
+        */
+
+        return false;
+    }
     static boolean isBlockVeinmineable(Block block) {
         // I wish I could write a neat little loop for this instead of a chunky
         // block of or's
@@ -104,14 +160,15 @@ public class VeinminerServer extends Veinminer implements ServerMod {
                 block instanceof BlockOreCoal ||
                 block instanceof BlockOreMetal ||
                 block instanceof BlockGravel ||
-                block instanceof BlockLog;
+                block instanceof BlockLog ||
+                block instanceof BlockClay;
     }
 
 
     // Main methods
     public void veinmine(EntityPlayerMP plr, int x, int y, int z) {
         World world = plr.worldObj;
-        if (!plr.isHoldingTool()) {
+        if (!plr.isSneaking() | !plr.isHoldingTool()) {
             // without this check we get a NullPointerException if the player breaks a block with their fist
             return;
         }
@@ -119,13 +176,13 @@ public class VeinminerServer extends Veinminer implements ServerMod {
         ItemStack stack = plr.getCurrentEquippedItem();
         Item tool = stack.getItem();
 
-        if (!plr.isSneaking() || !isItemTool(tool)) {
+        int blockId = world.getBlockId(x, y, z);
+        Block block = Block.blocksList[blockId];
+        if (!tool.canHarvestBlock(block)) {
             return;
         }
 
-        int blockId = world.getBlockId(x, y, z);
-        Block block = Block.blocksList[blockId];
-        if (!isBlockVeinmineable(block) || !tool.canHarvestBlock(block)) {
+        if (!isBlockVeinmineable(block) && !isBlockWhitelisted(world, blockId)) {
             return;
         }
 
@@ -134,22 +191,19 @@ public class VeinminerServer extends Veinminer implements ServerMod {
             // no idea what (meta 0x3) means, it's just how my decompiler displays the code that
             // checks for a naturally spawned log.
             if ((meta & 0x3) > 2) {
-                // In any case, if it's less than 2, that means it's a naturally spawned log.
-                // Otherwise, it's a player placed log and we don't wanna veinmine a whole ass house.
+                // In any case, if it's less than 2, that means it's a naturally spawned log
+                // Otherwise, it's a player placed log, and we don't wanna veinmine a whole ass house.
 
                 return;
             }
         }
 
         world.removeBlockTileEntity(x, y, z);
-        ArrayList<ArrayList<Integer>> coordsToVeinmine = getAdjacentBlockCoords(world, blockId, x, y, z);
+        ArrayList<ArrayList<Integer>> coordsToVeinmine = getVein(world, blockId, x, y, z);
         for (int i = 0; i <= coordsToVeinmine.size() - 1; i++) {
             int currentDamage = stack.getItemDamage();
             if (currentDamage >= stack.getMaxDamage()) {
                 break; // Preserve the tool if it's about to break.
-                // yk I'm not sure why I wrote this functionality into the game,
-                // cuz tools can't be repaired or anything, there's zero point to preserving tools
-                // oh well
             }
 
             ArrayList<Integer> coords = coordsToVeinmine.get(i);
@@ -158,6 +212,11 @@ public class VeinminerServer extends Veinminer implements ServerMod {
             int thisY = (coords.get(1));
             int thisZ = (coords.get(2));
             int metadata = world.getBlockMetadata(thisX, thisY, thisZ);
+            int thisBlockId = world.getBlockId(thisX, thisY, thisZ);
+
+            if (thisBlockId != blockId) {
+                continue; // For leaf edge cases.
+            }
 
             block.harvestBlock(world, plr, thisX, thisY, thisZ, metadata);
             block.onBlockDestroyedByPlayer(world, thisX, thisY, thisZ, metadata);
