@@ -1,8 +1,13 @@
 package com.jellied.veinminer;
 
 import com.fox2code.foxloader.loader.ClientMod;
+import com.fox2code.foxloader.loader.ModContainer;
+import com.fox2code.foxloader.loader.ModLoader;
 import com.fox2code.foxloader.network.NetworkPlayer;
+import com.fox2code.foxloader.registry.CommandCompat;
 import com.fox2code.foxloader.registry.RegisteredItemStack;
+import com.jellied.veinminer.chatcommands.CommandWhitelistAutocomplete;
+import com.jellied.veinminer.chatcommands.VeinmineWhitelistChatCommandClient;
 import net.minecraft.client.Minecraft;
 import net.minecraft.src.client.player.EntityPlayerSP;
 import net.minecraft.src.game.block.*;
@@ -10,6 +15,7 @@ import net.minecraft.src.game.item.*;
 import net.minecraft.src.game.level.World;
 import net.minecraft.src.game.nbt.NBTTagCompound;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -17,13 +23,7 @@ public class VeinminerClient extends Veinminer implements ClientMod {
     static final int MAX_VEINMINE_ITERATIONS = 10;
     final Minecraft MINECRAFT = Minecraft.getInstance();
 
-    public static int[] veinmineWhitelist;
-
     // Utility methods
-    public static void addToWhitelist(int blockId) {
-        //todo
-    }
-
     private static int getMagnitudeBetween(int x1, int x2) {
         return Math.abs(x1 - x2);
     }
@@ -143,22 +143,6 @@ public class VeinminerClient extends Veinminer implements ClientMod {
         return allCoords;
     }
 
-    static boolean isBlockWhitelisted(World world, int blockId) {
-        /*
-        int[] whitelist = ((WorldInfoAccessorClient) world.worldInfo).getVeinmineWhitelist();
-        if (whitelist == null) {
-            return false;
-        }
-
-        for (int whitelistedBlockId : whitelist) {
-            if (whitelistedBlockId == blockId) {
-                return true;
-            }
-        }
-        */
-
-        return false;
-    }
     static boolean isBlockVeinmineable(Block block) {
         // I wish I could write a neat little loop for this instead of a chunky
         // block of or's
@@ -188,7 +172,7 @@ public class VeinminerClient extends Veinminer implements ClientMod {
             return;
         }
 
-        if (!isBlockVeinmineable(block) && !isBlockWhitelisted(world, blockId)) {
+        if (!isBlockVeinmineable(block) && !WhitelistHandlerClient.isBlockWhitelisted(blockId)) {
             return;
         }
 
@@ -243,6 +227,31 @@ public class VeinminerClient extends Veinminer implements ClientMod {
     }
 
     public void onInit() {
+        initAutocomplete();
+        CommandCompat.registerCommand(new VeinmineWhitelistChatCommandClient());
+
         System.out.println("Veinminer client initialized.");
+    }
+
+    public void initAutocomplete() {
+        ModContainer autocompleteModContainer = ModLoader.getModContainer("jelliedautocomplete");
+
+        if (autocompleteModContainer == null) {
+            return;
+        }
+
+        Object clientMod = autocompleteModContainer.getClientMod();
+        System.out.println("Detected autocomplete mod, initializing... ");
+
+        try {
+            Method addAutocompleteMethod =  clientMod.getClass().getMethod("addAutocomplete", String.class, Object.class);
+            addAutocompleteMethod.invoke(clientMod, "/veinminewhitelist", new CommandWhitelistAutocomplete());
+
+            System.out.println("Successfully initialized veinmine whitelist autocompletion.");
+        }
+        catch (Exception e) {
+            System.out.println("Could not initialize veinmine whitelist autocompletion:");
+            e.printStackTrace();
+        }
     }
 }

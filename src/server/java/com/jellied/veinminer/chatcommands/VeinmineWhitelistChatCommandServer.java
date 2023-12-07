@@ -3,6 +3,7 @@ package com.jellied.veinminer.chatcommands;
 import com.fox2code.foxloader.network.ChatColors;
 import com.fox2code.foxloader.network.NetworkPlayer;
 import com.fox2code.foxloader.registry.CommandCompat;
+import com.jellied.veinminer.WhitelistHandlerServer;
 import net.minecraft.src.game.block.Block;
 
 public class VeinmineWhitelistChatCommandServer extends CommandCompat {
@@ -45,6 +46,31 @@ public class VeinmineWhitelistChatCommandServer extends CommandCompat {
             return;
         }
 
-        //todo
+        if (args[1].equalsIgnoreCase("add")) {
+            whitelistAdd(user, targetBlockName, id);
+        }
+        else {
+            whitelistRemove(user, targetBlockName, id);
+        }
+    }
+
+    public void whitelistAdd(NetworkPlayer user, String blockName, int blockId) {
+        if (WhitelistHandlerServer.isBlockWhitelisted(blockId)) {
+            user.displayChatMessage(ChatColors.RED + "'" + blockName + "' is already whitelisted!");
+            return;
+        }
+
+        WhitelistHandlerServer.addToWhitelist(blockId);
+        user.displayChatMessage(ChatColors.GREEN + "Whitelisted block '" + blockName + "'");
+    }
+
+    public void whitelistRemove(NetworkPlayer user, String blockName, int blockId) {
+        if (!WhitelistHandlerServer.isBlockWhitelisted(blockId)) {
+            user.displayChatMessage(ChatColors.RED + "'" + blockName + "' is not whitelisted!");
+            return;
+        }
+
+        WhitelistHandlerServer.removeFromWhitelist(blockId);
+        user.displayChatMessage(ChatColors.GREEN + "Removed block '" + blockName + "' from veinmine whitelist");
     }
 }

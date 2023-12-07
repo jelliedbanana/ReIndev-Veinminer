@@ -1,6 +1,5 @@
 package com.jellied.veinminer.client.mixins;
 
-import com.jellied.veinminer.VeinminerClient;
 import com.jellied.veinminer.WorldInfoAccessorClient;
 import net.minecraft.src.game.block.Block;
 import net.minecraft.src.game.level.WorldInfo;
@@ -14,26 +13,24 @@ import java.util.ArrayList;
 
 @Mixin(WorldInfo.class)
 public class MixinWorldInfo implements WorldInfoAccessorClient {
-    private int[] veinmineWhitelist;
+    private String veinmineWhitelist;
 
     @Inject(method = "<init>", at = @At("TAIL"))
     public void onWorldInfoConstructedWithTag(NBTTagCompound tag, CallbackInfo ci) {
         if (tag.hasKey("jelliedveinminewhitelist")) {
-            veinmineWhitelist = tag.getIntArray("jelliedveinminewhitelist");
+            veinmineWhitelist = tag.getString("jelliedveinminewhitelist");
         }
         else {
-            veinmineWhitelist = new int[Block.blocksList.length];
-            tag.setIntArray("jelliedveinminewhitelist", veinmineWhitelist);
+            veinmineWhitelist = "";
+            tag.setString("jelliedveinminewhitelist", veinmineWhitelist);
         }
-
-        VeinminerClient.veinmineWhitelist = veinmineWhitelist;
     }
 
     @Inject(method = "<init>(Lnet/minecraft/src/game/level/WorldInfo;)V", at = @At("TAIL"))
     public void onWorldInfoConstructedWithWorldInfo(WorldInfo worldInfo, CallbackInfo ci) {
         veinmineWhitelist = ((WorldInfoAccessorClient) worldInfo).getVeinmineWhitelist();
         if (veinmineWhitelist == null) {
-            veinmineWhitelist = new int[Block.blocksList.length];
+            veinmineWhitelist = "";
         }
 
         this.setVeinmineWhitelist(veinmineWhitelist);
@@ -41,19 +38,18 @@ public class MixinWorldInfo implements WorldInfoAccessorClient {
 
     @Inject(method = "updateTagCompound", at = @At("TAIL"))
     public void onWorldInfoUpdated(NBTTagCompound newTag, NBTTagCompound plrTag, CallbackInfo ci) {
-        newTag.setIntArray("jelliedveinminewhitelist", veinmineWhitelist);
+        if (veinmineWhitelist != null) {
+            newTag.setString("jelliedveinminewhitelist", veinmineWhitelist);
+        }
     }
 
     @Override
-    public int[] getVeinmineWhitelist() {
-        setVeinmineWhitelist(new int[Block.blocksList.length]);
-
+    public String getVeinmineWhitelist() {
         return veinmineWhitelist;
     }
 
     @Override
-    public void setVeinmineWhitelist(int[] newWhitelist) {
+    public void setVeinmineWhitelist(String newWhitelist) {
         veinmineWhitelist = newWhitelist;
-        VeinminerClient.veinmineWhitelist = veinmineWhitelist;
     }
 }

@@ -2,7 +2,9 @@ package com.jellied.veinminer;
 
 import com.fox2code.foxloader.loader.ServerMod;
 import com.fox2code.foxloader.network.NetworkPlayer;
+import com.fox2code.foxloader.registry.CommandCompat;
 import com.fox2code.foxloader.registry.RegisteredItemStack;
+import com.jellied.veinminer.chatcommands.VeinmineWhitelistChatCommandServer;
 import net.minecraft.src.game.block.*;
 import net.minecraft.src.game.entity.player.EntityPlayerMP;
 import net.minecraft.src.game.item.*;
@@ -233,6 +235,8 @@ public class VeinminerServer extends Veinminer implements ServerMod {
     }
 
     public void onInit() {
+        CommandCompat.registerCommand(new VeinmineWhitelistChatCommandServer());
+
         System.out.println("Veinminer server initialized.");
     }
 }

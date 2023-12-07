@@ -4,6 +4,7 @@
   "package": "com.jellied.veinminer.client.mixins",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
-
+    "MixinMinecraft",
+    "MixinWorldInfo"
   ]
 }

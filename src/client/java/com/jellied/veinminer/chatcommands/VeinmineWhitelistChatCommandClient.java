@@ -4,6 +4,7 @@ import com.fox2code.foxloader.network.ChatColors;
 import com.fox2code.foxloader.network.NetworkPlayer;
 import com.fox2code.foxloader.registry.CommandCompat;
 import com.jellied.veinminer.VeinminerClient;
+import com.jellied.veinminer.WhitelistHandlerClient;
 import net.minecraft.src.game.block.Block;
 
 public class VeinmineWhitelistChatCommandClient extends CommandCompat {
@@ -46,12 +47,31 @@ public class VeinmineWhitelistChatCommandClient extends CommandCompat {
             return;
         }
 
-        for (int whitelistedBlockId : VeinminerClient.veinmineWhitelist) {
-            //todo
+        if (args[1].equalsIgnoreCase("add")) {
+            whitelistAdd(user, targetBlockName, id);
+        }
+        else {
+            whitelistRemove(user, targetBlockName, id);
+        }
+    }
+
+    public void whitelistAdd(NetworkPlayer user, String blockName, int blockId) {
+        if (WhitelistHandlerClient.isBlockWhitelisted(blockId)) {
+            user.displayChatMessage(ChatColors.RED + "'" + blockName + "' is already whitelisted!");
+            return;
         }
 
-        if (args[1].equalsIgnoreCase("add")) {
-            //todo
+        WhitelistHandlerClient.addToWhitelist(blockId);
+        user.displayChatMessage(ChatColors.GREEN + "Whitelisted block '" + blockName + "'");
+    }
+
+    public void whitelistRemove(NetworkPlayer user, String blockName, int blockId) {
+        if (!WhitelistHandlerClient.isBlockWhitelisted(blockId)) {
+            user.displayChatMessage(ChatColors.RED + "'" + blockName + "' is not whitelisted!");
+            return;
         }
+
+        WhitelistHandlerClient.removeFromWhitelist(blockId);
+        user.displayChatMessage(ChatColors.GREEN + "Removed block '" + blockName + "' from veinmine whitelist");
     }
 }

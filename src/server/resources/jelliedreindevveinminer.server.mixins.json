@@ -4,6 +4,8 @@
   "package": "com.jellied.veinminer.server.mixins",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
-
+    "MixinMinecraftServer",
+    "MixinWorld",
+    "MixinWorldInfo"
   ]
 }

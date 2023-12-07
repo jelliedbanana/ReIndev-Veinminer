@@ -1,7 +1,6 @@
 package com.jellied.veinminer.client.mixins;
 
-import com.jellied.veinminer.VeinminerClient;
-import com.jellied.veinminer.WorldInfoAccessorClient;
+import com.jellied.veinminer.WhitelistHandlerClient;
 import net.minecraft.client.Minecraft;
 import net.minecraft.src.game.level.World;
 import org.spongepowered.asm.mixin.Mixin;
@@ -17,11 +16,6 @@ public class MixinMinecraft {
     @Inject(method = "changeWorld", at = @At("TAIL"))
     public void onWorldChanged(CallbackInfo ci) {
         World world = this.theWorld;
-
-        if (world == null) {
-            return;
-        }
-
-        VeinminerClient.veinmineWhitelist = ((WorldInfoAccessorClient) world.worldInfo).getVeinmineWhitelist();
+        WhitelistHandlerClient.onWorldChanged(world);
     }
 }
