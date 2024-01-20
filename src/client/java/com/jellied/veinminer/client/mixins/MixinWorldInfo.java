@@ -19,8 +19,7 @@ public class MixinWorldInfo implements WorldInfoAccessorClient {
     public void onWorldInfoConstructedWithTag(NBTTagCompound tag, CallbackInfo ci) {
         if (tag.hasKey("jelliedveinminewhitelist")) {
             veinmineWhitelist = tag.getString("jelliedveinminewhitelist");
-        }
-        else {
+        } else {
             veinmineWhitelist = "";
             tag.setString("jelliedveinminewhitelist", veinmineWhitelist);
         }
@@ -29,9 +28,8 @@ public class MixinWorldInfo implements WorldInfoAccessorClient {
     @Inject(method = "<init>(Lnet/minecraft/src/game/level/WorldInfo;)V", at = @At("TAIL"))
     public void onWorldInfoConstructedWithWorldInfo(WorldInfo worldInfo, CallbackInfo ci) {
         veinmineWhitelist = ((WorldInfoAccessorClient) worldInfo).getVeinmineWhitelist();
-        if (veinmineWhitelist == null) {
+        if (veinmineWhitelist == null)
             veinmineWhitelist = "";
-        }
 
         this.setVeinmineWhitelist(veinmineWhitelist);
     }
