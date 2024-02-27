@@ -13,46 +13,44 @@ public class WhitelistHandlerClient {
         world = newWorld;
         whitelist.clear();
 
-        if (world == null) {
+        if (world == null)
             return;
-        }
 
         String worldWhitelist = ((WorldInfoAccessorClient) world.worldInfo).getVeinmineWhitelist();
 
-        if (worldWhitelist == null) {
+        if (worldWhitelist == null)
             return;
-        }
 
         for (String stringId : worldWhitelist.split("//")) {
             try {
                 whitelist.add(Integer.valueOf(stringId));
-            }
-            catch(Exception ignored) {
-                return;
-            }
+            } catch(Exception ignored) {}
         }
     }
 
     public static void saveWhitelistToWorldInfo() {
-        if (world != null) {
-            String whitelistAsString = "";
+        if (world == null)
+            return;
 
-            for (Integer integer : whitelist) {
-                // What the fuck is a StringBuilder
-                whitelistAsString += integer + "//";
-            }
+        StringBuilder whitelistAsString = new StringBuilder();
 
-            ((WorldInfoAccessorClient) world.worldInfo).setVeinmineWhitelist(whitelistAsString);
-        }
+        for (Integer integer : whitelist)
+            whitelistAsString.append(integer).append("//");
+
+        ((WorldInfoAccessorClient) world.worldInfo).setVeinmineWhitelist(whitelistAsString.toString());
+    }
+
+    public static ArrayList<Integer> getWhitelist() {
+        return whitelist;
     }
 
     public static void addToWhitelist(int blockId) {
-        whitelist.add(new Integer(blockId));
+        whitelist.add(blockId);
         saveWhitelistToWorldInfo();
     }
 
     public static void removeFromWhitelist(int blockId) {
-        whitelist.remove(new Integer(blockId));
+        whitelist.remove((Object)blockId);
         saveWhitelistToWorldInfo();
     }
 
